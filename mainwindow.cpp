@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include <QDebug>
 #include <QHostAddress>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,9 +40,17 @@ void MainWindow::SendWrite()
     QString str_ip = ui->lineEdit_IP->text();
     QHostAddress IP(str_ip);
     m_SocketUPD->writeDatagram("Servers, where are you?" , IP , m_Port);
+
 }
 void MainWindow::on_pushButton_clicked()
 {
-    SendWrite();
+
+
+    for(int value = 0; value <= 100; value++){
+        QThread::msleep(40);
+        ui->progressBar->setValue(value);
+        qApp->processEvents(QEventLoop::AllEvents);
+        SendWrite();
+    }
 }
 
