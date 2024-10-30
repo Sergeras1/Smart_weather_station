@@ -29,7 +29,7 @@ const char *ssid     = "21308"; // SSID имя WiFi точки-доступа
 const char* password = "19032004SSS"; // Пароль WiFii  
 
 
-IPAddress local_ip(192,168,1,100);  // IP-адрес нашой платы статичский 
+IPAddress local_ip(192,168,1,100);  // IP-адрес платы статичский 
 IPAddress gateway(192,168,1,1);  // IP-адрес шлюза  
 IPAddress subnet(255,255,255,0); // Подсеть 
 
@@ -63,7 +63,7 @@ void setup()
     WiFi.config(local_ip, gateway, subnet);
     WiFi.begin(ssid, password);
   
-   // Ждем потключение к WiFi 
+   // Ждем подключение к WiFi 
     Serial.println("Connecting to Wifi");
     int count_n = 0;
     while (WiFi.status() != WL_CONNECTED) 
@@ -105,18 +105,22 @@ void loop()
    _TempHumid.Temperature = dht.readTemperature(); // получаем значение температуры
    _TempHumid.Humidity = dht.readHumidity();       // получаем значение влажности
    
-  char TempBuff[256];
-  sprintf(TempBuff,"-- Temperature: %d-- \n Humidity: %d", _TempHumid.Temperature, _TempHumid.Humidity);
+  char TempBuff[25];
+  //char HumBuff[25];
+  sprintf(TempBuff,"\n %d °C \n %d %%", _TempHumid.Temperature,  _TempHumid.Humidity);
+  //sprintf(HumBuff,"\n %d %%", _TempHumid.Humidity);
   Serial.printf( TempBuff );
-  char HumBuff[256];
+ // Serial.printf( HumBuff );
+        
         // Отсылаем данные температуры
         UDP.beginPacket(UDP.remoteIP(), UDP.remotePort());
         UDP.write(TempBuff);
         UDP.endPacket();
-        // Отслыаем данные о влажности
-       /*UDP.beginPacket(UDP.remoteIP(), UDP.remotePort());
+        delay(1000);
+       /*// Отсылаем данные о влажности
+        UDP.beginPacket(UDP.remoteIP(), UDP.remotePort());
         UDP.write(HumBuff);
-        UDP.endPacket();*/ 
-
-    delay(1000); // Ждем 10 милисекунд 
+        UDP.endPacket();
+         // Ждем 10 милисекунд
+        delay(100);*/ 
 }
