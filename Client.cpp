@@ -1,23 +1,31 @@
-﻿#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h>
 #include <iostream>
-
+#include <string>
 #pragma warning(disable: 4996)
 
 SOCKET Connection;
 
 void ClientHandler() {
-	char msg[256];
+	int msg_size;
 	while (true) {
-		if (recv(Connection, msg, sizeof(msg), NULL) > 0) {
-			std::cout << msg << std::endl;
+
+		if (recv(Connection, (char*)&msg_size, sizeof(int), NULL) > 0) {
+			char* msg = new char[msg_size + 1];
+			msg[msg_size] = '\0';
+			if (recv(Connection, msg, msg_size, NULL) > 0) {
+				std::cout << msg << std::endl;
+				delete[] msg;
+			}
+			
 		}
 		else {
 			closesocket(Connection);
 			Connection = INVALID_SOCKET;
-			std::cout << "Server error\n";
+			std::cout << "Server error!\n";
 			return;
 		}
+		
 	}
 }
 
@@ -45,10 +53,12 @@ int main(int argc, char* argv[]) {
 
 	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, NULL, NULL, NULL);
 
-	char msg1[256];
+	std::string msg1;
 	while (true) {
-		std::cin.getline(msg1, sizeof(msg1));
-		send(Connection, msg1, sizeof(msg1), NULL);
+		std::getline(std::cin, msg1);
+		int msg_size = msg1.size();
+		send(Connection, (char*)&msg_size, sizeof(int), NULL);
+		send(Connection, msg1.c_str(), msg_size, NULL);
 		Sleep(10);
 	}
 
