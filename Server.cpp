@@ -8,23 +8,34 @@ SOCKET Connections[100];
 int Counter = 0;
 
 void ClientHandler(int index) {
-	char msg[256];
+	int msg_size;
 	while (true) {
-		if (recv(Connections[index], msg, sizeof(msg), NULL) > 0) {
-			for (int i = 0; i < Counter; i++) {
-				if (i == index || Connections[i] == INVALID_SOCKET) {
-					continue;
+		if (recv(Connections[index], (char*)&msg_size, sizeof(int), NULL) > 0) {
+			char* msg = new char[msg_size + 1];
+			msg[msg_size] = '\0';
+			if (recv(Connections[index], msg, msg_size, NULL) > 0) {
+				for (int i = 0; i < Counter; i++) {
+					if (i == index || Connections[i] == INVALID_SOCKET) {
+						continue;
+					}
+					send(Connections[i], (char*)&msg_size, sizeof(int), NULL);
+					send(Connections[i], msg, msg_size, NULL);
 				}
-				send(Connections[i], msg, sizeof(msg), NULL);
+				delete[] msg;
 			}
+			
+			
 		}
 		else {
-			::closesocket(Connections[index]);
+			closesocket(Connections[index]);
 			Connections[index] = INVALID_SOCKET;
-			std::cout << "Client Disconnect!\n";
+			std::cout << "Client disconnect!\n";
 			return;
 		}
+			
+		
 	}
+
 }
 
 int main(int argc, char* argv[]) {
@@ -55,8 +66,10 @@ int main(int argc, char* argv[]) {
 		}
 		else {
 			std::cout << "Client Connected!\n";
-			char msg[256] = "Hello. It`s my first network program!";
-			send(newConnection, msg, sizeof(msg), NULL);
+			std::string msg = "Server connected!";
+			int msg_size = msg.size();
+			send(newConnection, (char*)&msg_size, sizeof(int), NULL);
+			send(newConnection, msg.c_str(), msg_size, NULL);
 
 			Connections[i] = newConnection;
 			Counter++;
