@@ -3,54 +3,68 @@
 #include <QDebug>
 #include <QHostAddress>
 #include <QMessageBox>
+#include <iostream>
+#include <QTcpSocket>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+
 {
     ui->setupUi(this);
-    m_SocketUPD = new QUdpSocket(this);
-    m_Port = 8888;
-    connect(m_SocketUPD, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
-
-    m_SocketUPD->bind(m_Port);
+    socket = new QTcpSocket(this);
+    if(connect(socket, &QTcpSocket::readyRead, this, &MainWindow::readMEssage)) {
+        ui->label->setText("Connect to server!" );
+    }
+    else {
+        ui->label->setText("Error: not connect to server!" );
+    }
 }
 
 MainWindow::~MainWindow()
 {
+
     delete ui;
 }
 
-void MainWindow::onReadyRead()
+void MainWindow::connectToServer()
 {
-    QString data = "";
-    while(m_SocketUPD->hasPendingDatagrams())
-    {
-        QByteArray datagram;
-        datagram.resize(m_SocketUPD->pendingDatagramSize());
-        QHostAddress senderIP;
-        quint16 senderPort;
-        m_SocketUPD->readDatagram(datagram.data(), datagram.size(), &senderIP, &senderPort);
-        data += QString(datagram);
-        ui->temp_label->setText(data);
-    }
+    socket->connectToHost(QHostAddress("192.168.1.153"), 1111);
 }
-void MainWindow::SendWrite()
+
+void MainWindow::readMEssage()
 {
-    QString str_ip = ui->lineEdit_IP->text();
-    QHostAddress IP(str_ip);
-    m_SocketUPD->writeDatagram("Servers, where are you?" , IP , m_Port);
+    if (socket->bytesAvailable() < sizeof(int)) {
+        return;
+    }
+
+    int msg_size;
+    socket->read(reinterpret_cast<char*>(&msg_size), sizeof(int));
+
+    if (socket->bytesAvailable() < msg_size) {
+        return;
+    }
+
+    // Читаем само сообщение
+    QByteArray msg = socket->read(msg_size);
+    ui->messageLabel->setText(msg);
+    qDebug() << msg;
 
 }
+
+
+
+
+void MainWindow::on_connectBtn_clicked()
+{
+    connectToServer();
+
+}
+
+
 void MainWindow::on_pushButton_clicked()
 {
-
-
-    for(int value = 0; value <= 100; value++){
-        QThread::msleep(40);
-        ui->progressBar->setValue(value);
-        qApp->processEvents(QEventLoop::AllEvents);
-        SendWrite();
-    }
+    socket->disconnectFromHost();
+    ui->label->setText("Disconnect to server!");
 }
 
