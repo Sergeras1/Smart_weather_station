@@ -29,5 +29,7 @@ private slots:
 
     void on_connectBtn_clicked();
     void on_pushButton_clicked();
+public slots:
+    void errorOccurred(QAbstractSocket::SocketError error);
 };
 #endif // MAINWINDOW_H

@@ -1,11 +1,36 @@
 ﻿#pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h>
+#include <string>
 #include <iostream>
 
 #pragma warning(disable: 4996)
 
 SOCKET Connections[100];
 int Counter = 0;
+
+int doit( char* argv[])
+{
+	char ac[80];
+	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
+		std::cerr << "Error " << WSAGetLastError() <<
+			" when getting local host name." << std::endl;
+		return 1;
+	}
+	
+	struct hostent* phe = gethostbyname(ac);
+	if (phe == 0) {
+		std::cerr << "Yow! Bad host lookup." << std::endl;
+		return 1;
+	}
+
+	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
+		struct in_addr addr;
+		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
+		std::cout << inet_ntoa(addr) << std::endl;
+	}
+
+	return 0;
+}
 
 void ClientHandler(int index) {
 	int msg_size;
@@ -39,17 +64,19 @@ void ClientHandler(int index) {
 }
 
 int main(int argc, char* argv[]) {
-	//WSAStartup
+	const char p[20] = { "192.168.1.153" };
+
 	WSAData wsaData;
-	WORD DLLVersion = MAKEWORD(2, 1);
+	WORD DLLVersion = MAKEWORD(2, 2);
 	if (WSAStartup(DLLVersion, &wsaData) != 0) {
 		std::cout << "Error" << std::endl;
 		exit(1);
 	}
-
+	doit(argv);
+	
 	SOCKADDR_IN addr;
 	int sizeofaddr = sizeof(addr);
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_addr.s_addr = inet_addr(p); //"192.168.1.153"
 	addr.sin_port = htons(1111);
 	addr.sin_family = AF_INET;
 
@@ -66,10 +93,10 @@ int main(int argc, char* argv[]) {
 		}
 		else {
 			std::cout << "Client Connected!\n";
-			std::string msg = "Server connected!";
-			int msg_size = msg.size();
-			send(newConnection, (char*)&msg_size, sizeof(int), NULL);
-			send(newConnection, msg.c_str(), msg_size, NULL);
+			//std::string msg = "Server connected!";
+			//int msg_size = msg.size();
+			//send(newConnection, (char*)&msg_size, sizeof(int), NULL);
+			//send(newConnection, msg.c_str(), msg_size, NULL);
 
 			Connections[i] = newConnection;
 			Counter++;
