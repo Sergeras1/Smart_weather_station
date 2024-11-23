@@ -23,9 +23,13 @@ private:
     Ui::MainWindow *ui;
     QTcpSocket* socket ;
 
+    int temperature = 0;
+    int humidity = 0;
+    bool isOk;
+
 private slots:
     void connectToServer();
-    void readMEssage();
+    void readMessage();
 
     void on_connectBtn_clicked();
     void on_pushButton_clicked();

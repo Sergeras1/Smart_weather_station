@@ -1,110 +1,69 @@
 ﻿#pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h>
-#include <string>
 #include <iostream>
+#include <string>
 
-#pragma warning(disable: 4996)
+#pragma warning(disable : 4996)
 
 SOCKET Connections[100];
 int Counter = 0;
 
-int doit( char* argv[])
-{
-	char ac[80];
-	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-		std::cerr << "Error " << WSAGetLastError() <<
-			" when getting local host name." << std::endl;
-		return 1;
-	}
-	
-	struct hostent* phe = gethostbyname(ac);
-	if (phe == 0) {
-		std::cerr << "Yow! Bad host lookup." << std::endl;
-		return 1;
-	}
-
-	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-		struct in_addr addr;
-		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-		std::cout << inet_ntoa(addr) << std::endl;
-	}
-
-	return 0;
-}
-
 void ClientHandler(int index) {
-	int msg_size;
-	while (true) {
-		if (recv(Connections[index], (char*)&msg_size, sizeof(int), NULL) > 0) {
-			char* msg = new char[msg_size + 1];
-			msg[msg_size] = '\0';
-			if (recv(Connections[index], msg, msg_size, NULL) > 0) {
-				for (int i = 0; i < Counter; i++) {
-					if (i == index || Connections[i] == INVALID_SOCKET) {
-						continue;
-					}
-					send(Connections[i], (char*)&msg_size, sizeof(int), NULL);
-					send(Connections[i], msg, msg_size, NULL);
-				}
-				delete[] msg;
-			}
-			
-			
-		}
-		else {
-			closesocket(Connections[index]);
-			Connections[index] = INVALID_SOCKET;
-			std::cout << "Client disconnect!\n";
-			return;
-		}
-			
-		
-	}
+    char buffer[1024];
+    while (true) {
+        int bytesReceived = recv(Connections[index], buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) {
+            closesocket(Connections[index]);
+            Connections[index] = INVALID_SOCKET;
+            std::cout << "Client disconnected!" << std::endl;
+            return;
+        }
 
+        buffer[bytesReceived] = '\0';  
+        for (int i = 0; i < Counter; i++) {
+            if (i != index && Connections[i] != INVALID_SOCKET) {
+                send(Connections[i], buffer, bytesReceived, 0);
+            }
+        }
+    }
 }
 
-int main(int argc, char* argv[]) {
-	const char p[20] = { "192.168.1.153" };
+int main() {
+    const char* serverIP = "192.168.1.153";
+    const int serverPort = 1111;
 
-	WSAData wsaData;
-	WORD DLLVersion = MAKEWORD(2, 2);
-	if (WSAStartup(DLLVersion, &wsaData) != 0) {
-		std::cout << "Error" << std::endl;
-		exit(1);
-	}
-	doit(argv);
-	
-	SOCKADDR_IN addr;
-	int sizeofaddr = sizeof(addr);
-	addr.sin_addr.s_addr = inet_addr(p); //"192.168.1.153"
-	addr.sin_port = htons(1111);
-	addr.sin_family = AF_INET;
+    WSAData wsaData;
+    WORD DLLVersion = MAKEWORD(2, 2);
+    if (WSAStartup(DLLVersion, &wsaData) != 0) {
+        std::cout << "Error initializing WinSock" << std::endl;
+        exit(1);
+    }
 
-	SOCKET sListen = socket(AF_INET, SOCK_STREAM, NULL);
-	bind(sListen, (SOCKADDR*)&addr, sizeof(addr));
-	listen(sListen, SOMAXCONN);
+    SOCKADDR_IN addr;
+    int addrSize = sizeof(addr);
+    addr.sin_addr.s_addr = inet_addr(serverIP);
+    addr.sin_port = htons(serverPort);
+    addr.sin_family = AF_INET;
 
-	SOCKET newConnection;
-	for (int i = 0; i < 100; i++) {
-		newConnection = accept(sListen, (SOCKADDR*)&addr, &sizeofaddr);
+    SOCKET sListen = socket(AF_INET, SOCK_STREAM, 0);
+    bind(sListen, (SOCKADDR*)&addr, sizeof(addr));
+    listen(sListen, SOMAXCONN);
 
-		if (newConnection == 0) {
-			std::cout << "Error #2\n";
-		}
-		else {
-			std::cout << "Client Connected!\n";
-			//std::string msg = "Server connected!";
-			//int msg_size = msg.size();
-			//send(newConnection, (char*)&msg_size, sizeof(int), NULL);
-			//send(newConnection, msg.c_str(), msg_size, NULL);
+    SOCKET newConnection;
+    for (int i = 0; i < 100; i++) {
+        newConnection = accept(sListen, (SOCKADDR*)&addr, &addrSize);
 
-			Connections[i] = newConnection;
-			Counter++;
-			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(i), NULL, NULL);
-		}
-	}
+        if (newConnection == INVALID_SOCKET) {
+            std::cout << "Error accepting connection" << std::endl;
+            continue;
+        }
 
+        std::cout << "Client connected!" << std::endl;
+        Connections[i] = newConnection;
+        Counter++;
+        CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ClientHandler, (LPVOID)(i), 0, NULL);
+    }
 
-	system("pause");
-	return 0;
+    WSACleanup();
+    return 0;
 }

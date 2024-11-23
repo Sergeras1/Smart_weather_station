@@ -1,87 +1,70 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-#include <QHostAddress>
 #include <QPixmap>
-#include <iostream>
 #include <QTcpSocket>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-
-{
+    , ui(new Ui::MainWindow) {
     ui->setupUi(this);
     socket = new QTcpSocket(this);
-    connect(socket, &QTcpSocket::readyRead, this, &MainWindow::readMEssage);
-    connect(socket, SIGNAL(errorOccurred(QAbstractSocket::SocketError)),
-            this, SLOT(errorOccurred(QAbstractSocket::SocketError)));
+
+    connect(socket, &QTcpSocket::readyRead, this, &MainWindow::readMessage);
+    connect(socket, &QTcpSocket::errorOccurred, this, &MainWindow::errorOccurred);
 
     connectToServer();
 
     QPixmap imgTemp("C:/Users/sergey/Desktop/Home_Weather_Station/layout/image/icons/free-icon-temperature-3923489.png");
     QPixmap imgHum("C:/Users/sergey/Desktop/Home_Weather_Station/layout/image/icons/free-icon-humidity-15893504.png");
-    QPixmap imgPres("C:/Users/sergey/Desktop/Home_Weather_Station/layout/image/icons/free-icon-thermometer-3525808.png");
 
     ui->labelImageTemp->setPixmap(imgTemp);
     ui->labelImageHum->setPixmap(imgHum);
-    ui->labelImagePres->setPixmap(imgPres);
-
 }
 
-MainWindow::~MainWindow()
-{
-
+MainWindow::~MainWindow() {
     delete ui;
 }
 
-void MainWindow::connectToServer()
-{
-    socket->connectToHost(QHostAddress("192.168.1.153"), 1111);
-
-}
-
-void MainWindow::readMEssage()
-{
-    if (socket->bytesAvailable() < sizeof(int)) {
-        return;
+void MainWindow::connectToServer() {
+    socket->connectToHost("192.168.1.153", 1111);
+    if (socket->waitForConnected(3000)) {
+        ui->infoMes->setText("Connected to server");
+    } else {
+        ui->infoMes->setText("Connection failed: " + socket->errorString());
     }
+}
 
-    int msg_size;
-    socket->read(reinterpret_cast<char*>(&msg_size), sizeof(int));
+void MainWindow::readMessage() {
+    while (socket->canReadLine()) {
+        QString message = QString::fromUtf8(socket->readLine().trimmed());
+        qDebug() << "Received message:" << message;
 
-    if (socket->bytesAvailable() < msg_size) {
-        return;
+        if (message.startsWith("T:")) {
+            bool isOk;
+            temperature = message.mid(2).toFloat(&isOk);
+            if (isOk) {
+                ui->labelTemp->setText(QString::number(temperature, 'f', 1) + " °C");
+            }
+        } else if (message.startsWith("H:")) {
+            bool isOk;
+            humidity = message.mid(2).toFloat(&isOk);
+            if (isOk) {
+                ui->labelHum->setText(QString::number(humidity, 'f', 1) + " %");
+            }
+        }
     }
-
-    // Читаем само сообщение
-    QByteArray msg = socket->read(msg_size);
-    ui->labelTemp->setText(msg);
-    ui->infoMes->setText("Connect to server!");
-    qDebug() << msg;
-
 }
 
-
-
-
-void MainWindow::on_connectBtn_clicked()
-{
-
-    ui->infoMes->setText("Connect to server!" );
-
+void MainWindow::on_connectBtn_clicked() {
+    connectToServer();
 }
 
-
-void MainWindow::on_pushButton_clicked()
-{
+void MainWindow::on_pushButton_clicked() {
     socket->disconnectFromHost();
-    ui->infoMes->setText("Disconnect to server!");
+    ui->infoMes->setText("Disconnected from server");
 }
 
-void MainWindow::errorOccurred(QAbstractSocket::SocketError error)
-{
-    QString errMsg = socket->errorString();
-    ui->infoMes->setText(errMsg);
+void MainWindow::errorOccurred(QAbstractSocket::SocketError error) {
+    ui->infoMes->setText("Socket error: " + socket->errorString());
 }
-
