@@ -1,5 +1,6 @@
 QT       += core gui network
 QT       += network
+QT       += core gui printsupport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
@@ -10,15 +11,23 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    panelsettings.cpp \
+    qcustomplot.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    panelsettings.h \
+    qcustomplot.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    panelsettings.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    resource.qrc
